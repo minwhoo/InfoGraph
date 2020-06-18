@@ -4,3 +4,5 @@ torch-sparse==0.6.5
 torch-cluster==1.5.4
 torch-spline-conv==1.2.0
 torch-geometric==1.5.0
+scikit-learn==0.23.1
+seaborn==0.10.1

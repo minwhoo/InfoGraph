@@ -1,14 +1,15 @@
-import math
 import argparse
 from pathlib import Path
 
 import torch
+import numpy as np
 import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
 from torch_geometric.data import DataLoader
 from torch_geometric.datasets import TUDataset
 from torch_geometric.nn import GINConv, global_add_pool
+from evaluate_embedding import evaluate_embedding
 
 DATA_DIR = Path("./data/")
 
@@ -92,8 +93,8 @@ class GlobalLocalDiscriminator(nn.Module):
     def compute_mutual_information(real_scores, fake_scores):
         """Compute mutual information using Jenson-shannon divergence between real pairs and fake pairs"""
 
-        E_positive = (math.log(2) - F.softplus(- real_scores)).mean()
-        E_negative = (- math.log(2) + fake_scores + F.softplus(- fake_scores)).mean()
+        E_positive = (np.log(2) - F.softplus(- real_scores)).mean()
+        E_negative = (- np.log(2) + fake_scores + F.softplus(- fake_scores)).mean()
 
         return E_positive - E_negative
 
@@ -155,6 +156,22 @@ def evaluate(model, dataloader, device):
     print(total_loss / len(dataloader))
 
 
+def evaluate_downstream(model, dataloader, device):
+    model.eval()
+    total_loss = 0
+    x_embeds = []
+    ys = []
+    with torch.no_grad():
+        for data in dataloader:
+            ys.append(data.y.cpu().detach().numpy())
+            if data.x is None:
+                data.x = torch.ones(data.batch.shape[0])
+            data = data.to(device)
+            x_embed = model.encode_graph(data)
+            x_embeds.append(x_embed.cpu().detach().numpy())
+    evaluate_embedding(np.vstack(x_embeds), np.concatenate(ys))
+
+
 def main():
     # --------------------- PARSE ARGS -----------------------
     parser = argparse.ArgumentParser()
@@ -188,6 +205,7 @@ def main():
     model = InfoGraph(dataset_num_features, args.encoder_hidden_dim, args.num_encoder_layers).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
+    evaluate_downstream(model, dataloader, device)
     print("Starting training...")
 
     for epoch in range(1, args.num_epoch+1):
@@ -195,6 +213,7 @@ def main():
         print("| Epoch: {:3} | Unsupervised Loss: {:10.4f} |".format(epoch, train_loss))
 
     print("Training finished!")
+    evaluate_downstream(model, dataloader, device)
 
 
 if __name__ == "__main__":
