@@ -190,12 +190,15 @@ def main():
 
     # --------------------- LOAD DATASET ---------------------
     print("Loading dataset...")
-    transform = T.Compose([TargetLabelSelection(args.target), Complete(), T.Distance(norm=False)])
-    dataset = QM9(QM9_DATASET_PATH, pre_transform=transform).shuffle()
+    dataset = QM9(
+        QM9_DATASET_PATH,
+        pre_transform=T.Compose([Complete(), T.Distance(norm=False)]),
+        transform=TargetLabelSelection(args.target)
+    ).shuffle()
 
-    mean = dataset.data.y.mean().item()
-    std = dataset.data.y.std().item()
-    dataset.data.y = (dataset.data.y - mean) / std
+    mean = dataset.data.y[:,args.target].mean().item()
+    std = dataset.data.y[:,args.target].std().item()
+    dataset.data.y[:,args.target] = (dataset.data.y[:,args.target] - mean) / std
 
     test_dataset = dataset[:10000]
     val_dataset = dataset[10000:20000]
@@ -239,7 +242,7 @@ def main():
         if min_val_error is None or val_error < min_val_error:
             min_val_error = val_error
             min_val_epoch = epoch
-            torch.save(model.state_dict, checkpoint_path)
+            torch.save(model.state_dict(), checkpoint_path)
 
         lr = scheduler.optimizer.param_groups[0]['lr']
         elapsed_time = datetime.timedelta(seconds=int(time.time() - start_time))
@@ -253,7 +256,7 @@ def main():
 
     print("Evaluating on test set...")
     model.load_state_dict(torch.load(checkpoint_path))
-    test_error = evaluate(model, val_loader, std, device)
+    test_error = evaluate(model, test_loader, std, device)
     print("| Val MAE: {:8.4f} | Test MAE: {:8.4f} |".format(min_val_error, test_error))
 
 
