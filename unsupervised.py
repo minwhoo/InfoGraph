@@ -11,6 +11,8 @@ from torch_geometric.datasets import TUDataset
 from torch_geometric.nn import GINConv, global_add_pool
 from evaluate_embedding import evaluate_embedding
 
+from model import GlobalLocalDiscriminator, FeedForwardNetwork
+
 DATA_DIR = Path("./data/")
 
 
@@ -49,62 +51,16 @@ class GINEncoder(nn.Module):
         return x_global, x_patches
 
 
-class FeedForwardNetwork(nn.Module):
-    def __init__(self, input_dim):
-        super().__init__()
-        self.block = nn.Sequential(
-            nn.Linear(input_dim, input_dim),
-            nn.ReLU(),
-            nn.Linear(input_dim, input_dim),
-            nn.ReLU(),
-            nn.Linear(input_dim, input_dim),
-            nn.ReLU()
-        )
-        self.linear_shortcut = nn.Linear(input_dim, input_dim)
-
-    def forward(self, x):
-        return self.block(x) + self.linear_shortcut(x)
-
-
-class GlobalLocalDiscriminator(nn.Module):
-    """Discriminator model for comparing graph/patch representation pairs"""
-    def __init__(self, embed_dim):
-        super().__init__()
-        self.global_encoder = FeedForwardNetwork(embed_dim)
-        self.patch_encoder = FeedForwardNetwork(embed_dim)
-
-    def forward(self, x_global, x_patch, batch):
-        h_global = self.global_encoder(x_global)
-        h_patch = self.patch_encoder(x_patch)
-        score_matrix = torch.mm(h_global, h_patch.T)
-
-        # compute real-fake label mask
-        mask = torch.zeros_like(score_matrix, dtype=torch.bool)
-        mask[batch, torch.arange(len(batch))] = 1
-
-        real_scores = score_matrix[mask]
-        fake_scores = score_matrix[~mask]
-
-        loss = - self.compute_mutual_information(real_scores, fake_scores)
-
-        return loss
-
-    @staticmethod
-    def compute_mutual_information(real_scores, fake_scores):
-        """Compute mutual information using Jenson-shannon divergence between real pairs and fake pairs"""
-
-        E_positive = (np.log(2) - F.softplus(- real_scores)).mean()
-        E_negative = (- np.log(2) + fake_scores + F.softplus(- fake_scores)).mean()
-
-        return E_positive - E_negative
-
-
 class InfoGraph(nn.Module):
     """Unsupervised graph representation learning framewark"""
     def __init__(self, input_dim, encoder_hidden_dim, num_encoder_layers):
         super().__init__()
         self.gnn_encoder = GINEncoder(input_dim, encoder_hidden_dim, num_encoder_layers)
-        self.discriminator = GlobalLocalDiscriminator(encoder_hidden_dim * num_encoder_layers)
+        embed_dim = encoder_hidden_dim * num_encoder_layers
+        self.discriminator = GlobalLocalDiscriminator(
+            FeedForwardNetwork(embed_dim),
+            FeedForwardNetwork(embed_dim),
+        )
 
         self.reset_parameters()
 
@@ -138,7 +94,7 @@ def train(model, dataloader, optimizer, device):
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * data.num_graphs
-    return total_loss / len(dataloader)
+    return total_loss / len(dataloader.dataset)
 
 
 def evaluate(model, dataloader, device):
@@ -151,7 +107,7 @@ def evaluate(model, dataloader, device):
             data = data.to(device)
             loss = model(data)
             total_loss += loss.item() * data.num_graphs
-    print(total_loss / len(dataloader))
+    print(total_loss / len(dataloader.dataset))
 
 
 def evaluate_downstream(model, dataloader, device):
