@@ -101,10 +101,8 @@ class GlobalLocalDiscriminator(nn.Module):
 
 class InfoGraph(nn.Module):
     """Unsupervised graph representation learning framewark"""
-    def __init__(self, input_dim, encoder_hidden_dim, num_encoder_layers, alpha=0.5, beta=1., gamma=.1):
+    def __init__(self, input_dim, encoder_hidden_dim, num_encoder_layers):
         super().__init__()
-        self.alpha = alpha
-        self.beta = beta
         self.gnn_encoder = GINEncoder(input_dim, encoder_hidden_dim, num_encoder_layers)
         self.discriminator = GlobalLocalDiscriminator(encoder_hidden_dim * num_encoder_layers)
 
@@ -173,15 +171,17 @@ def evaluate_downstream(model, dataloader, device):
 
 
 def main():
+    np.random.seed(0)
+    torch.manual_seed(0)
     # --------------------- PARSE ARGS -----------------------
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset", choices=['MUTAG'], default='MUTAG')
+    parser.add_argument("--dataset", choices=['MUTAG', 'PTC_MR', 'REDDIT-BINARY', 'REDDIT-MULTI-5K', 'IMDB-BINARY', 'IMDB-MULTI'], default='MUTAG')
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--num-epoch", type=int, default=20)
     parser.add_argument("--encoder-hidden-dim", type=int, default=32)
-    parser.add_argument("--num-encoder-layers", type=int, default=3)
+    parser.add_argument("--num-encoder-layers", type=int, default=4)
 
     args = parser.parse_args()
 
@@ -195,6 +195,8 @@ def main():
     dataset = TUDataset(DATA_DIR / args.dataset, name=args.dataset)
     try:
         dataset_num_features = dataset.num_features
+        if dataset_num_features == 0:
+            dataset_num_features = 1
     except:
         dataset_num_features = 1
 
