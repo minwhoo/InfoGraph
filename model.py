@@ -29,7 +29,7 @@ class FeedForwardNetwork(nn.Module):
         return self.block(x) + self.linear_shortcut(x)
 
 
-class GlobalLocalDiscriminator(nn.Module):
+class GlobalPatchDiscriminator(nn.Module):
     """Discriminator model for comparing graph/patch representation pairs"""
     def __init__(self, global_encoder, patch_encoder):
         super().__init__()

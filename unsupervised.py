@@ -11,7 +11,7 @@ from torch_geometric.datasets import TUDataset
 from torch_geometric.nn import GINConv, global_add_pool
 from evaluate_embedding import evaluate_embedding
 
-from model import GlobalLocalDiscriminator, FeedForwardNetwork
+from model import GlobalPatchDiscriminator, FeedForwardNetwork
 
 DATA_DIR = Path("./data/")
 
@@ -57,7 +57,7 @@ class InfoGraph(nn.Module):
         super().__init__()
         self.gnn_encoder = GINEncoder(input_dim, encoder_hidden_dim, num_encoder_layers)
         embed_dim = encoder_hidden_dim * num_encoder_layers
-        self.discriminator = GlobalLocalDiscriminator(
+        self.discriminator = GlobalPatchDiscriminator(
             FeedForwardNetwork(embed_dim),
             FeedForwardNetwork(embed_dim),
         )

@@ -14,7 +14,7 @@ from torch_geometric.data import DataLoader
 from torch_geometric.nn import NNConv, Set2Set
 from torch_geometric.utils import remove_self_loops
 
-from model import GlobalGlobalDiscriminator, GlobalLocalDiscriminator, FeedForwardNetwork
+from model import GlobalGlobalDiscriminator, GlobalPatchDiscriminator, FeedForwardNetwork
 
 QM9_DATASET_PATH = Path("./data/QM9")
 
@@ -95,7 +95,7 @@ class InfoGraphSemi(nn.Module):
             FeedForwardNetwork(embed_dim, encoder_hidden_dim),
             FeedForwardNetwork(embed_dim, encoder_hidden_dim),
         )
-        self.unsup_discriminator = GlobalLocalDiscriminator(
+        self.unsup_discriminator = GlobalPatchDiscriminator(
             FeedForwardNetwork(embed_dim, encoder_hidden_dim),
             FeedForwardNetwork(encoder_hidden_dim, encoder_hidden_dim),
         )
