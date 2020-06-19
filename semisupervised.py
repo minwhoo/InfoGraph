@@ -20,6 +20,7 @@ QM9_DATASET_PATH = Path("./data/QM9")
 
 
 class EnnS2SEncoder(nn.Module):
+    """GNN model used in Gilmer et al."""
     def __init__(self, num_features, dim):
         super().__init__()
         self.lin0 = nn.Linear(num_features, dim)
@@ -46,7 +47,8 @@ class EnnS2SEncoder(nn.Module):
         return out, feat_map[-1]
 
 
-class MyTransform:
+class TargetLabelSelection:
+    """Set label to target label"""
     def __init__(self, target):
         self.target = target
     def __call__(self, data):
@@ -56,6 +58,7 @@ class MyTransform:
 
 
 class Complete:
+    """Make molecule graph complete (fully connected)"""
     def __call__(self, data):
         device = data.edge_index.device
 
@@ -169,7 +172,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--train-size", type=int, default=5000)
-    parser.add_argument("--target", choices=[0,1,2,3,4,5,6,7,8,9,10,11], default=0)
+    parser.add_argument("--target", type=int, choices=[0,1,2,3,4,5,6,7,8,9,10,11], default=0)
     parser.add_argument("--batch-size", type=int, default=20)
     parser.add_argument("--num-epoch", type=int, default=500)
     parser.add_argument("--lr", type=float, default=0.001)
@@ -187,7 +190,7 @@ def main():
 
     # --------------------- LOAD DATASET ---------------------
     print("Loading dataset...")
-    transform = T.Compose([MyTransform(args.target), Complete(), T.Distance(norm=False)])
+    transform = T.Compose([TargetLabelSelection(args.target), Complete(), T.Distance(norm=False)])
     dataset = QM9(QM9_DATASET_PATH, pre_transform=transform).shuffle()
 
     mean = dataset.data.y.mean().item()
