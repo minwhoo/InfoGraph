@@ -14,3 +14,6 @@ This implementation is basically a cleaned-up and commented version of the offic
 
 ## Run unsupervised Learning
 `python unsupervised.py`
+
+## Run semisupervised Learning
+`python semisupervised.py --target 0`
